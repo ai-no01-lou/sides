@@ -2,11 +2,11 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { HomeScreen } from './src/screens/HomeScreen';
-import { Project } from './src/config/projects';
+import { WebViewScreen } from './src/screens/WebViewScreen';
 
 export type RootStackParamList = {
   Home: undefined;
-  WebView: { project: Project };
+  WebView: { url: string; title?: string };
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -17,26 +17,11 @@ function App(): React.JSX.Element {
       <Stack.Navigator
         initialRouteName="Home"
         screenOptions={{
-          headerStyle: { backgroundColor: '#FAFAFA' },
-          headerTintColor: '#111',
-          headerTitleStyle: { fontWeight: '600' },
-          headerShadowVisible: false,
+          headerShown: false,
         }}
       >
-        <Stack.Screen
-          name="Home"
-          options={{ headerShown: false }}
-        >
-          {(props) => (
-            <HomeScreen
-              {...props}
-              onProjectPress={(project) => {
-                // Future: navigate to WebView screen
-                console.log('Open project:', project.url);
-              }}
-            />
-          )}
-        </Stack.Screen>
+        <Stack.Screen name="Home" component={HomeScreen} />
+        <Stack.Screen name="WebView" component={WebViewScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

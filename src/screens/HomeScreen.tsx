@@ -8,11 +8,11 @@ import {
   StatusBar,
   SafeAreaView,
 } from 'react-native';
+import type { StackScreenProps } from '@react-navigation/stack';
 import { PROJECTS, Project } from '../config/projects';
+import type { RootStackParamList } from '../../App';
 
-interface Props {
-  onProjectPress?: (project: Project) => void;
-}
+type Props = StackScreenProps<RootStackParamList, 'Home'>;
 
 const ProjectCard = ({
   project,
@@ -37,9 +37,9 @@ const ProjectCard = ({
   </TouchableOpacity>
 );
 
-export const HomeScreen: React.FC<Props> = ({ onProjectPress }) => {
+export const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const handlePress = (project: Project) => {
-    onProjectPress?.(project);
+    navigation.navigate('WebView', { url: project.url, title: project.name });
   };
 
   return (
