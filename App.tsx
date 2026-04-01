@@ -53,8 +53,8 @@ function AppNavigator() {
     <Stack.Navigator
       initialRouteName="Home"
       screenOptions={{
-        headerStyle: {backgroundColor: '#000'},
-        headerTintColor: '#fff',
+        headerStyle: {backgroundColor: '#f8f8f8'},
+        headerTintColor: '#1a1a1a',
         headerTitleStyle: {fontWeight: '600'},
         headerShadowVisible: false,
       }}>
@@ -104,7 +104,7 @@ function App(): React.JSX.Element {
 const styles = StyleSheet.create({
   loading: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#f8f8f8',
     alignItems: 'center',
     justifyContent: 'center',
   },

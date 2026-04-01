@@ -61,7 +61,7 @@ export function HomeScreen({onProjectPress}: Props) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" />
+      <StatusBar barStyle="dark-content" backgroundColor="#f8f8f8" />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Projects</Text>
         <TouchableOpacity onPress={logout} activeOpacity={0.7}>
@@ -88,7 +88,7 @@ export function HomeScreen({onProjectPress}: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#f8f8f8',
   },
   header: {
     flexDirection: 'row',
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#fff',
+    color: '#1a1a1a',
     letterSpacing: -0.5,
   },
   logoutText: {
@@ -127,15 +127,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: {width: 0, height: 4},
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    shadowOffset: {width: 0, height: 2},
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
   },
   tileLabel: {
     marginTop: 6,
     fontSize: 11,
-    color: '#ccc',
+    color: '#555',
     textAlign: 'center',
   },
 });

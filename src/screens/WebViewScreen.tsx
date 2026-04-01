@@ -1,4 +1,4 @@
-import React, {useRef, useCallback, useState} from 'react';
+import React, {useRef, useCallback} from 'react';
 import {StyleSheet, SafeAreaView, ActivityIndicator, View} from 'react-native';
 import {WebView, WebViewNavigation} from 'react-native-webview';
 import {useAuth} from '../auth/AuthContext';
@@ -11,7 +11,6 @@ interface Props {
 export function WebViewScreen({project}: Props) {
   const {accessToken, refreshToken, refresh} = useAuth();
   const webViewRef = useRef<WebView>(null);
-  const [isRetrying401, setIsRetrying401] = useState(false);
 
   // Inject tokens into localStorage + cookies before the page JS runs
   const injectedJS = `
@@ -33,7 +32,6 @@ export function WebViewScreen({project}: Props) {
       const {statusCode} = syntheticEvent.nativeEvent;
       if (statusCode === 401 && !isRetrying401Ref.current) {
         isRetrying401Ref.current = true;
-        setIsRetrying401(true);
         const newToken = await refresh();
         if (newToken && webViewRef.current) {
           const escaped = JSON.stringify(newToken);
@@ -46,7 +44,8 @@ export function WebViewScreen({project}: Props) {
             true;
           `;
           webViewRef.current.injectJavaScript(reInject);
-          webViewRef.current.reload();
+          // Wait for React to re-render with updated injectedJS before reloading
+          requestAnimationFrame(() => webViewRef.current?.reload());
         }
       }
     },
@@ -56,7 +55,6 @@ export function WebViewScreen({project}: Props) {
   const handleNavigationStateChange = useCallback(
     (_nav: WebViewNavigation) => {
       isRetrying401Ref.current = false;
-      setIsRetrying401(false);
     },
     [],
   );
@@ -89,15 +87,15 @@ export function WebViewScreen({project}: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#fff',
   },
   webview: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#fff',
   },
   loading: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#000',
+    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
   },
