@@ -36,7 +36,12 @@ export function LoginScreen() {
         await login(trimmedEmail, trimmedPassword);
       }
     } catch (e: any) {
-      setError(e.message || 'Something went wrong');
+      const msg = e.message || 'Something went wrong';
+      // On 409 during register, hint to switch to sign in
+      if (isRegister && e.status === 409) {
+        setIsRegister(false);
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }

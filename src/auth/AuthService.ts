@@ -11,6 +11,14 @@ interface RefreshResponse {
   refreshToken: string;
 }
 
+class AuthError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.status = status;
+  }
+}
+
 async function post<T>(path: string, body: Record<string, string>): Promise<T> {
   const res = await fetch(`${AUTH_BASE_URL}${path}`, {
     method: 'POST',
@@ -19,9 +27,27 @@ async function post<T>(path: string, body: Record<string, string>): Promise<T> {
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.message || `Auth request failed (${res.status})`);
+    const raw = err.error || err.message || '';
+    throw new AuthError(
+      friendlyMessage(raw, res.status),
+      res.status,
+    );
   }
   return res.json();
+}
+
+function friendlyMessage(raw: string, status: number): string {
+  const lower = raw.toLowerCase();
+  if (status === 409 || lower.includes('already registered')) {
+    return 'An account with this email already exists. Try signing in instead.';
+  }
+  if (status === 401 || lower.includes('invalid credentials')) {
+    return 'Incorrect email or password. Please try again.';
+  }
+  if (status === 422 || lower.includes('validation')) {
+    return 'Please check your email and password format.';
+  }
+  return raw || `Something went wrong (${status})`;
 }
 
 export async function login(
