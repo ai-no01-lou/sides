@@ -1,6 +1,9 @@
-import React from 'react';
-import {ActivityIndicator, View, StyleSheet, Linking} from 'react-native';
-import {NavigationContainer, NavigationContainerRef} from '@react-navigation/native';
+import React, {useEffect, useRef, useCallback} from 'react';
+import {ActivityIndicator, Linking, View, StyleSheet} from 'react-native';
+import {
+  NavigationContainer,
+  NavigationContainerRef,
+} from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
 import {AuthProvider, useAuth} from './src/auth/AuthContext';
 import {LoginScreen} from './src/screens/LoginScreen';
@@ -14,28 +17,72 @@ export type RootStackParamList = {
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
-const navigationRef = React.createRef<NavigationContainerRef<RootStackParamList>>();
 
-// Handle sideprojects://open?name=X deep links
-function handleDeepLink(url: string) {
-  try {
-    const parsed = new URL(url);
-    if (parsed.hostname === 'open') {
-      const name = parsed.searchParams.get('name') || parsed.searchParams.get('id');
-      if (name) {
-        const project = PROJECTS.find(
-          p => p.id === name || p.name.toLowerCase() === name.toLowerCase(),
-        );
-        if (project && navigationRef.current?.isReady()) {
-          navigationRef.current.navigate('WebView', {project});
-        }
-      }
-    }
-  } catch {}
+function resolveProject(nameOrId: string): Project | null {
+  return (
+    PROJECTS.find(
+      p =>
+        p.id === nameOrId ||
+        p.name.toLowerCase() === nameOrId.toLowerCase(),
+    ) ?? null
+  );
+}
+
+function parseDeepLink(url: string): Project | null {
+  // Manual parsing to avoid Hermes URL() issues with custom schemes
+  // Expected: sideprojects://open?name=dashboard
+  const stripped = url.replace(/^sideprojects:\/\//, '');
+  // stripped = "open?name=dashboard"
+  const [path, query] = stripped.split('?');
+  if (path !== 'open' || !query) {
+    return null;
+  }
+  const params = new URLSearchParams(query);
+  const name = params.get('name') || params.get('id');
+  if (!name) {
+    return null;
+  }
+  return resolveProject(name);
 }
 
 function AppNavigator() {
   const {isLoading, isAuthenticated} = useAuth();
+  const navRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
+  const pendingRef = useRef<Project | null>(null);
+
+  const navigateToProject = useCallback((project: Project) => {
+    if (navRef.current?.isReady()) {
+      navRef.current.navigate('WebView', {project});
+    } else {
+      pendingRef.current = project;
+    }
+  }, []);
+
+  // Handle deep links while app is open
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', ({url}) => {
+      const project = parseDeepLink(url);
+      if (project && isAuthenticated) {
+        navigateToProject(project);
+      }
+    });
+    return () => sub.remove();
+  }, [isAuthenticated, navigateToProject]);
+
+  // Handle deep link that launched the app (cold start)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+    Linking.getInitialURL().then(url => {
+      if (url) {
+        const project = parseDeepLink(url);
+        if (project) {
+          navigateToProject(project);
+        }
+      }
+    });
+  }, [isAuthenticated, navigateToProject]);
 
   if (isLoading) {
     return (
@@ -50,53 +97,51 @@ function AppNavigator() {
   }
 
   return (
-    <Stack.Navigator
-      initialRouteName="Home"
-      screenOptions={{
-        headerStyle: {backgroundColor: '#f8f8f8'},
-        headerTintColor: '#1a1a1a',
-        headerTitleStyle: {fontWeight: '600'},
-        headerShadowVisible: false,
+    <NavigationContainer
+      ref={navRef}
+      onReady={() => {
+        // Process any deep link that arrived before the navigator was ready
+        if (pendingRef.current) {
+          navRef.current?.navigate('WebView', {
+            project: pendingRef.current,
+          });
+          pendingRef.current = null;
+        }
       }}>
-      <Stack.Screen name="Home" options={{headerShown: false}}>
-        {props => (
-          <HomeScreen
-            {...props}
-            onProjectPress={project => {
-              props.navigation.navigate('WebView', {project});
-            }}
-          />
-        )}
-      </Stack.Screen>
-      <Stack.Screen
-        name="WebView"
-        options={({route}) => ({
-          title: route.params.project.name,
-        })}>
-        {props => <WebViewScreen project={props.route.params.project} />}
-      </Stack.Screen>
-    </Stack.Navigator>
+      <Stack.Navigator
+        initialRouteName="Home"
+        screenOptions={{
+          headerStyle: {backgroundColor: '#f8f8f8'},
+          headerTintColor: '#1a1a1a',
+          headerTitleStyle: {fontWeight: '600'},
+          headerShadowVisible: false,
+        }}>
+        <Stack.Screen name="Home" options={{headerShown: false}}>
+          {props => (
+            <HomeScreen
+              {...props}
+              onProjectPress={project => {
+                props.navigation.navigate('WebView', {project});
+              }}
+            />
+          )}
+        </Stack.Screen>
+        <Stack.Screen
+          name="WebView"
+          options={({route}) => ({
+            title: route.params.project.name,
+          })}>
+          {props => <WebViewScreen project={props.route.params.project} />}
+        </Stack.Screen>
+      </Stack.Navigator>
+    </NavigationContainer>
   );
 }
 
 function App(): React.JSX.Element {
-  React.useEffect(() => {
-    // Handle deep link that opened the app
-    Linking.getInitialURL().then(url => {
-      if (url) {
-        handleDeepLink(url);
-      }
-    });
-    // Handle deep links while app is running
-    const sub = Linking.addEventListener('url', ({url}) => handleDeepLink(url));
-    return () => sub.remove();
-  }, []);
-
   return (
     <AuthProvider>
-      <NavigationContainer ref={navigationRef}>
-        <AppNavigator />
-      </NavigationContainer>
+      <AppNavigator />
     </AuthProvider>
   );
 }
