@@ -1,4 +1,4 @@
-import React, {useRef, useCallback} from 'react';
+import React, {useRef, useCallback, useState} from 'react';
 import {StyleSheet, SafeAreaView, ActivityIndicator, View} from 'react-native';
 import {WebView, WebViewNavigation} from 'react-native-webview';
 import {useAuth} from '../auth/AuthContext';
@@ -8,24 +8,30 @@ interface Props {
   project: Project;
 }
 
-export function WebViewScreen({project}: Props) {
-  const {accessToken, refreshToken, refresh} = useAuth();
-  const webViewRef = useRef<WebView>(null);
-
-  // Inject tokens into localStorage + cookies before the page JS runs
-  const injectedJS = `
+function buildInjectionScript(access: string, rt: string): string {
+  const a = JSON.stringify(access);
+  const r = JSON.stringify(rt);
+  return `
     (function() {
       try {
-        localStorage.setItem('oc_access_token', ${JSON.stringify(accessToken || '')});
-        localStorage.setItem('oc_refresh_token', ${JSON.stringify(refreshToken || '')});
-        document.cookie = 'token=' + ${JSON.stringify(accessToken || '')} + '; path=/';
-        document.cookie = 'oc_access_token=' + ${JSON.stringify(accessToken || '')} + '; path=/';
+        localStorage.setItem('oc_access_token', ${a});
+        localStorage.setItem('oc_refresh_token', ${r});
+        document.cookie = 'token=' + ${a} + '; path=/';
+        document.cookie = 'oc_access_token=' + ${a} + '; path=/';
       } catch(e) {}
     })();
     true;
   `;
+}
 
+export function WebViewScreen({project}: Props) {
+  const {accessToken, refreshToken, refresh} = useAuth();
+  const webViewRef = useRef<WebView>(null);
   const isRetrying401Ref = useRef(false);
+  // Counter to force WebView remount after 401 refresh (ensures fresh injectedJS)
+  const [webViewKey, setWebViewKey] = useState(0);
+
+  const injectedJS = buildInjectionScript(accessToken || '', refreshToken || '');
 
   const handleHttpError = useCallback(
     async (syntheticEvent: {nativeEvent: {statusCode: number}}) => {
@@ -33,19 +39,9 @@ export function WebViewScreen({project}: Props) {
       if (statusCode === 401 && !isRetrying401Ref.current) {
         isRetrying401Ref.current = true;
         const newToken = await refresh();
-        if (newToken && webViewRef.current) {
-          const escaped = JSON.stringify(newToken);
-          const reInject = `
-            (function() {
-              try {
-                localStorage.setItem('oc_access_token', ${escaped});
-              } catch(e) {}
-            })();
-            true;
-          `;
-          webViewRef.current.injectJavaScript(reInject);
-          // Wait for React to re-render with updated injectedJS before reloading
-          requestAnimationFrame(() => webViewRef.current?.reload());
+        if (newToken) {
+          // Remount WebView so injectedJavaScriptBeforeContentLoaded picks up the new tokens
+          setWebViewKey(k => k + 1);
         }
       }
     },
@@ -62,6 +58,7 @@ export function WebViewScreen({project}: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <WebView
+        key={webViewKey}
         ref={webViewRef}
         source={{uri: project.url}}
         style={styles.webview}
@@ -70,7 +67,6 @@ export function WebViewScreen({project}: Props) {
         onNavigationStateChange={handleNavigationStateChange}
         allowsBackForwardNavigationGestures={true}
         pullToRefreshEnabled={true}
-        sharedCookiesEnabled={true}
         javaScriptEnabled={true}
         domStorageEnabled={true}
         startInLoadingState={true}
