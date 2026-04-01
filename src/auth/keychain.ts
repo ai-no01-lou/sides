@@ -1,6 +1,6 @@
 import * as Keychain from 'react-native-keychain';
 
-const SERVICE_NAME = 'com.thislou.sideprojects-navigator';
+const SERVICE_NAME = 'com.thislou.sides';
 
 interface StoredTokens {
   accessToken: string;
