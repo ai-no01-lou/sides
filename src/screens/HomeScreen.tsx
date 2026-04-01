@@ -7,123 +7,136 @@ import {
   StyleSheet,
   StatusBar,
   SafeAreaView,
+  Dimensions,
 } from 'react-native';
-import { PROJECTS, Project } from '../config/projects';
+import LinearGradient from 'react-native-linear-gradient';
+import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
+import {PROJECTS, Project} from '../config/projects';
+import {useAuth} from '../auth/AuthContext';
+
+const COLUMNS = 4;
+const GRID_PADDING = 16;
+const TILE_GAP = 12;
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const TILE_SIZE =
+  (SCREEN_WIDTH - GRID_PADDING * 2 - TILE_GAP * (COLUMNS - 1)) / COLUMNS;
+const ICON_SIZE = TILE_SIZE * 0.42;
 
 interface Props {
   onProjectPress?: (project: Project) => void;
 }
 
-const ProjectCard = ({
+function ProjectTile({
   project,
   onPress,
 }: {
   project: Project;
   onPress: (p: Project) => void;
-}) => (
-  <TouchableOpacity
-    style={styles.card}
-    onPress={() => onPress(project)}
-    activeOpacity={0.7}
-  >
-    <View style={styles.cardContent}>
-      <Text style={styles.cardTitle}>{project.name}</Text>
-      <Text style={styles.cardDescription}>{project.description}</Text>
-      <Text style={styles.cardUrl} numberOfLines={1}>
-        {project.url}
+}) {
+  return (
+    <TouchableOpacity
+      activeOpacity={0.7}
+      onPress={() => onPress(project)}
+      style={styles.tileWrapper}>
+      <LinearGradient
+        colors={project.gradientColors}
+        start={{x: 0, y: 0}}
+        end={{x: 1, y: 1}}
+        style={styles.tile}>
+        <MaterialDesignIcons
+          name={project.iconName}
+          size={ICON_SIZE}
+          color="rgba(255,255,255,0.95)"
+        />
+      </LinearGradient>
+      <Text style={styles.tileLabel} numberOfLines={1}>
+        {project.name}
       </Text>
-    </View>
-    <Text style={styles.cardArrow}>›</Text>
-  </TouchableOpacity>
-);
+    </TouchableOpacity>
+  );
+}
 
-export const HomeScreen: React.FC<Props> = ({ onProjectPress }) => {
-  const handlePress = (project: Project) => {
-    onProjectPress?.(project);
-  };
+export function HomeScreen({onProjectPress}: Props) {
+  const {logout} = useAuth();
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#FAFAFA" />
+      <StatusBar barStyle="light-content" backgroundColor="#000" />
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Side Projects</Text>
-        <Text style={styles.headerSubtitle}>Lou's collection of tools & experiments</Text>
+        <Text style={styles.headerTitle}>Projects</Text>
+        <TouchableOpacity onPress={logout} activeOpacity={0.7}>
+          <Text style={styles.logoutText}>Sign Out</Text>
+        </TouchableOpacity>
       </View>
       <FlatList
         data={PROJECTS}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <ProjectCard project={item} onPress={handlePress} />
+        keyExtractor={item => item.id}
+        numColumns={COLUMNS}
+        contentContainerStyle={styles.grid}
+        columnWrapperStyle={styles.row}
+        renderItem={({item}) => (
+          <ProjectTile
+            project={item}
+            onPress={p => onProjectPress?.(p)}
+          />
         )}
-        contentContainerStyle={styles.list}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
       />
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#000',
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 24,
-    paddingBottom: 16,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: GRID_PADDING,
+    paddingTop: 16,
+    paddingBottom: 12,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#111',
+    color: '#fff',
     letterSpacing: -0.5,
   },
-  headerSubtitle: {
+  logoutText: {
     fontSize: 14,
-    color: '#888',
-    marginTop: 4,
+    color: '#667eea',
   },
-  list: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
+  grid: {
+    paddingHorizontal: GRID_PADDING,
+    paddingTop: 8,
   },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
+  row: {
+    gap: TILE_GAP,
+    marginBottom: TILE_GAP,
+  },
+  tileWrapper: {
+    width: TILE_SIZE,
     alignItems: 'center',
+  },
+  tile: {
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+    borderRadius: TILE_SIZE * 0.22,
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: {width: 0, height: 4},
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  cardContent: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111',
-    marginBottom: 4,
-  },
-  cardDescription: {
-    fontSize: 14,
-    color: '#555',
-    marginBottom: 6,
-  },
-  cardUrl: {
-    fontSize: 12,
-    color: '#0066CC',
-  },
-  cardArrow: {
-    fontSize: 22,
-    color: '#CCC',
-    marginLeft: 8,
-  },
-  separator: {
-    height: 10,
+  tileLabel: {
+    marginTop: 6,
+    fontSize: 11,
+    color: '#ccc',
+    textAlign: 'center',
   },
 });
 
