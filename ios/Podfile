@@ -30,5 +30,13 @@ target 'Sides' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Suppress "Upload Symbols Failed" for prebuilt frameworks (React, hermesvm,
+    # ReactNativeDependencies) that ship without dSYMs.
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf'
+      end
+    end
   end
 end
