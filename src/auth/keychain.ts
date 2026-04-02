@@ -5,6 +5,8 @@ const SERVICE_NAME = 'com.thislou.sides';
 interface StoredTokens {
   accessToken: string;
   refreshToken: string;
+  userEmail?: string;
+  userName?: string;
 }
 
 export async function saveTokens(tokens: StoredTokens): Promise<void> {

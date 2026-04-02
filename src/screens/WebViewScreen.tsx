@@ -6,11 +6,15 @@ import type {Project} from '../config/projects';
 
 interface Props {
   project: Project;
+  onAuthRequired?: () => void;
 }
 
-function buildInjectionScript(access: string, rt: string): string {
+function buildInjectionScript(access: string | null, rt: string | null): string {
+  if (!access) {
+    return 'true;';
+  }
   const a = JSON.stringify(access);
-  const r = JSON.stringify(rt);
+  const r = JSON.stringify(rt || '');
   return `
     (function() {
       try {
@@ -24,28 +28,34 @@ function buildInjectionScript(access: string, rt: string): string {
   `;
 }
 
-export function WebViewScreen({project}: Props) {
-  const {accessToken, refreshToken, refresh} = useAuth();
+export function WebViewScreen({project, onAuthRequired}: Props) {
+  const {accessToken, refreshToken, refresh, isAuthenticated} = useAuth();
   const webViewRef = useRef<WebView>(null);
   const isRetrying401Ref = useRef(false);
-  // Counter to force WebView remount after 401 refresh (ensures fresh injectedJS)
   const [webViewKey, setWebViewKey] = useState(0);
 
-  const injectedJS = buildInjectionScript(accessToken || '', refreshToken || '');
+  const injectedJS = buildInjectionScript(accessToken, refreshToken);
 
   const handleHttpError = useCallback(
     async (syntheticEvent: {nativeEvent: {statusCode: number}}) => {
       const {statusCode} = syntheticEvent.nativeEvent;
       if (statusCode === 401 && !isRetrying401Ref.current) {
         isRetrying401Ref.current = true;
+        if (!isAuthenticated) {
+          // Not logged in — prompt login via drawer
+          onAuthRequired?.();
+          return;
+        }
         const newToken = await refresh();
         if (newToken) {
-          // Remount WebView so injectedJavaScriptBeforeContentLoaded picks up the new tokens
           setWebViewKey(k => k + 1);
+        } else {
+          // Refresh failed — prompt login
+          onAuthRequired?.();
         }
       }
     },
-    [refresh],
+    [refresh, isAuthenticated, onAuthRequired],
   );
 
   const handleNavigationStateChange = useCallback(

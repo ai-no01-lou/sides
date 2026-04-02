@@ -129,7 +129,12 @@ function AppNavigator() {
             options={({route}) => ({
               title: route.params.project.name,
             })}>
-            {props => <WebViewScreen project={props.route.params.project} />}
+            {props => (
+              <WebViewScreen
+                project={props.route.params.project}
+                onAuthRequired={() => setDrawerVisible(true)}
+              />
+            )}
           </Stack.Screen>
         </Stack.Navigator>
       </NavigationContainer>

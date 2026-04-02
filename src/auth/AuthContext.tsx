@@ -22,8 +22,6 @@ interface AuthContextValue extends AuthState {
   register: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<string | null>;
-  userEmail: string | null;
-  userName: string | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -46,13 +44,19 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
         // Try refreshing to validate
         try {
           const fresh = await AuthService.refreshTokens(tokens.refreshToken);
-          await saveTokens(fresh);
+          await saveTokens({
+            ...fresh,
+            userEmail: tokens.userEmail,
+            userName: tokens.userName,
+          });
           setState(s => ({
             ...s,
             isLoading: false,
             isAuthenticated: true,
             accessToken: fresh.accessToken,
             refreshToken: fresh.refreshToken,
+            userEmail: tokens.userEmail || null,
+            userName: tokens.userName || null,
           }));
         } catch {
           // Refresh failed — tokens expired
@@ -77,6 +81,8 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     await saveTokens({
       accessToken: res.accessToken,
       refreshToken: res.refreshToken,
+      userEmail: res.user.email,
+      userName: res.user.name,
     });
     setState({
       isLoading: false,
@@ -94,6 +100,8 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       await saveTokens({
         accessToken: res.accessToken,
         refreshToken: res.refreshToken,
+        userEmail: res.user.email,
+        userName: res.user.name,
       });
       setState({
         isLoading: false,
