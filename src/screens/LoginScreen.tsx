@@ -52,7 +52,7 @@ export function LoginScreen() {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <View style={styles.inner}>
-        <Text style={styles.title}>Side Projects</Text>
+        <Text style={styles.title}>Sides.</Text>
         <Text style={styles.subtitle}>
           {isRegister ? 'Create an account' : 'Sign in to continue'}
         </Text>
