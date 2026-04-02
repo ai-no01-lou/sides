@@ -1,5 +1,5 @@
 import React, {useRef, useCallback, useState} from 'react';
-import {StyleSheet, SafeAreaView, ActivityIndicator, View} from 'react-native';
+import {StyleSheet, ActivityIndicator, View} from 'react-native';
 import {WebView, WebViewNavigation} from 'react-native-webview';
 import {useAuth} from '../auth/AuthContext';
 import type {Project} from '../config/projects';
@@ -75,7 +75,7 @@ export function WebViewScreen({project, onAuthRequired}: Props) {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <WebView
         key={webViewKey}
         ref={webViewRef}
@@ -95,7 +95,7 @@ export function WebViewScreen({project, onAuthRequired}: Props) {
           </View>
         )}
       />
-    </SafeAreaView>
+    </View>
   );
 }
 
