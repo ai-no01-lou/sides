@@ -133,7 +133,11 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     }
     try {
       const res = await AuthService.refreshTokens(state.refreshToken);
-      await saveTokens(res);
+      await saveTokens({
+        ...res,
+        userEmail: state.userEmail ?? undefined,
+        userName: state.userName ?? undefined,
+      });
       setState(s => ({
         ...s,
         accessToken: res.accessToken,
@@ -144,7 +148,7 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       await logout();
       return null;
     }
-  }, [state.refreshToken, logout]);
+  }, [state.refreshToken, state.userEmail, state.userName, logout]);
 
   return (
     <AuthContext.Provider

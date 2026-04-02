@@ -10,6 +10,7 @@ import {HomeScreen} from './src/screens/HomeScreen';
 import {WebViewScreen} from './src/screens/WebViewScreen';
 import {ProfileDrawer} from './src/components/ProfileDrawer';
 import {Project, PROJECTS} from './src/config/projects';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type RootStackParamList = {
   Home: undefined;
@@ -18,9 +19,12 @@ export type RootStackParamList = {
 
 const Stack = createStackNavigator<RootStackParamList>();
 
+let cachedDynamicProjects: Project[] | null = null;
+
 function resolveProject(nameOrId: string): Project | null {
+  const list = cachedDynamicProjects ?? PROJECTS;
   return (
-    PROJECTS.find(
+    list.find(
       p =>
         p.id === nameOrId ||
         p.name.toLowerCase() === nameOrId.toLowerCase(),
@@ -57,6 +61,15 @@ function AppNavigator() {
     } else {
       pendingRef.current = project;
     }
+  }, []);
+
+  // Hydrate dynamic project cache for deep link resolution
+  useEffect(() => {
+    AsyncStorage.getItem('sides_projects_cache').then(cached => {
+      if (cached) {
+        try { cachedDynamicProjects = JSON.parse(cached); } catch {}
+      }
+    });
   }, []);
 
   // Handle deep links while app is open

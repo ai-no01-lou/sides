@@ -33,6 +33,15 @@ export function WebViewScreen({project, onAuthRequired}: Props) {
   const webViewRef = useRef<WebView>(null);
   const isRetrying401Ref = useRef(false);
   const [webViewKey, setWebViewKey] = useState(0);
+  const prevAuthRef = useRef(isAuthenticated);
+
+  // Remount WebView when user logs in (e.g. via drawer after 401)
+  React.useEffect(() => {
+    if (isAuthenticated && !prevAuthRef.current) {
+      setWebViewKey(k => k + 1);
+    }
+    prevAuthRef.current = isAuthenticated;
+  }, [isAuthenticated]);
 
   const injectedJS = buildInjectionScript(accessToken, refreshToken);
 
