@@ -112,6 +112,7 @@
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
+				522AB6E1FAC5436BF41D7523 /* [CP-User] Copy Prebuilt Framework dSYMs */,
 			);
 			buildRules = (
 			);
@@ -199,6 +200,16 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Sides/Pods-Sides-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
+		};
+		522AB6E1FAC5436BF41D7523 /* [CP-User] Copy Prebuilt Framework dSYMs */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			name = "[CP-User] Copy Prebuilt Framework dSYMs";
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "DSYM_SRC=\"${PODS_ROOT}/prebuilt-dsyms\"\nif [ -d \"$DSYM_SRC\" ] && [ -n \"$DWARF_DSYM_FOLDER_PATH\" ]; then\n  for dsym in \"$DSYM_SRC\"/*.dSYM; do\n    [ -d \"$dsym\" ] || continue\n    echo \"Copying $(basename \"$dsym\") to $DWARF_DSYM_FOLDER_PATH\"\n    cp -R \"$dsym\" \"$DWARF_DSYM_FOLDER_PATH/\"\n  done\nfi\n";
 		};
 		C38B50BA6285516D6DCD4F65 /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;

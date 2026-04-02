@@ -23,6 +23,20 @@ target 'Sides' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
+  # Copy placeholder dSYMs for prebuilt frameworks into the archive
+  script_phase :name => 'Copy Prebuilt Framework dSYMs',
+    :script => <<~SCRIPT,
+      DSYM_SRC="${PODS_ROOT}/prebuilt-dsyms"
+      if [ -d "$DSYM_SRC" ] && [ -n "$DWARF_DSYM_FOLDER_PATH" ]; then
+        for dsym in "$DSYM_SRC"/*.dSYM; do
+          [ -d "$dsym" ] || continue
+          echo "Copying $(basename "$dsym") to $DWARF_DSYM_FOLDER_PATH"
+          cp -R "$dsym" "$DWARF_DSYM_FOLDER_PATH/"
+        done
+      fi
+    SCRIPT
+    :execution_position => :after_compile
+
   post_install do |installer|
     react_native_post_install(
       installer,
@@ -31,12 +45,55 @@ target 'Sides' do
       # :ccache_enabled => true
     )
 
-    # Suppress "Upload Symbols Failed" for prebuilt frameworks (React, hermesvm,
-    # ReactNativeDependencies) that ship without dSYMs.
+    # Suppress "Upload Symbols Failed" for prebuilt frameworks that ship without dSYMs.
+    # 1. Set dwarf-only for all pod targets (no dSYM generation for compiled pods)
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
         config.build_settings['DEBUG_INFORMATION_FORMAT'] = 'dwarf'
       end
+    end
+
+    # 2. Generate placeholder dSYMs for prebuilt frameworks (React, hermesvm,
+    #    ReactNativeDependencies). These ship as prebuilt XCFrameworks with UUIDs
+    #    but no dSYMs. App Store Connect sees the UUIDs and warns about missing
+    #    dSYMs. We create empty dSYMs with matching UUIDs to satisfy the check.
+    prebuilt_fw_paths = {
+      'hermesvm' => Dir.glob("#{installer.sandbox.root}/**/ios-arm64/hermesvm.framework/hermesvm").first,
+      'React' => Dir.glob("#{installer.sandbox.root}/**/ios-arm64/React.framework/React").first,
+      'ReactNativeDependencies' => Dir.glob("#{installer.sandbox.root}/**/ios-arm64/ReactNativeDependencies.framework/ReactNativeDependencies").first,
+    }
+    dsym_output_dir = "#{installer.sandbox.root}/../Pods/prebuilt-dsyms"
+    FileUtils.mkdir_p(dsym_output_dir)
+    prebuilt_fw_paths.each do |name, fw_path|
+      next unless fw_path && File.exist?(fw_path)
+      dsym_path = "#{dsym_output_dir}/#{name}.framework.dSYM"
+      uuid = `xcrun dwarfdump --uuid '#{fw_path}' 2>/dev/null`.match(/UUID: ([A-F0-9-]+)/)&.[](1)
+      next unless uuid
+      Pod::UI.puts "Creating placeholder dSYM for #{name}.framework (UUID: #{uuid})"
+      FileUtils.rm_rf(dsym_path)
+      FileUtils.mkdir_p("#{dsym_path}/Contents/Resources/DWARF")
+      File.write("#{dsym_path}/Contents/Info.plist", <<~PLIST)
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+          <key>CFBundleDevelopmentRegion</key>
+          <string>English</string>
+          <key>CFBundleIdentifier</key>
+          <string>com.apple.xcode.dsym.#{name}</string>
+          <key>CFBundleInfoDictionaryVersion</key>
+          <string>6.0</string>
+          <key>CFBundlePackageType</key>
+          <string>dSYM</string>
+          <key>CFBundleSignature</key>
+          <string>????</string>
+          <key>CFBundleVersion</key>
+          <string>1</string>
+        </dict>
+        </plist>
+      PLIST
+      # Copy the binary as placeholder DWARF — small but has matching UUID
+      FileUtils.cp(fw_path, "#{dsym_path}/Contents/Resources/DWARF/#{name}")
     end
   end
 end
