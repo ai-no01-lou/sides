@@ -101,12 +101,12 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
-    color: '#1a1a1a',
+    color: '#4B4B4B',
     letterSpacing: -0.5,
   },
   logoutText: {
     fontSize: 14,
-    color: '#667eea',
+    color: '#7A687F',
   },
   grid: {
     paddingHorizontal: GRID_PADDING,

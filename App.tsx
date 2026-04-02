@@ -87,7 +87,7 @@ function AppNavigator() {
   if (isLoading) {
     return (
       <View style={styles.loading}>
-        <ActivityIndicator size="large" color="#667eea" />
+        <ActivityIndicator size="large" color="#7A687F" />
       </View>
     );
   }
@@ -112,7 +112,7 @@ function AppNavigator() {
         initialRouteName="Home"
         screenOptions={{
           headerStyle: {backgroundColor: '#f8f8f8'},
-          headerTintColor: '#1a1a1a',
+          headerTintColor: '#4B4B4B',
           headerTitleStyle: {fontWeight: '600'},
           headerShadowVisible: false,
         }}>

@@ -72,7 +72,7 @@ export function WebViewScreen({project}: Props) {
         startInLoadingState={true}
         renderLoading={() => (
           <View style={styles.loading}>
-            <ActivityIndicator size="large" color="#667eea" />
+            <ActivityIndicator size="large" color="#7A687F" />
           </View>
         )}
       />
