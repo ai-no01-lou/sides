@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
@@ -8,10 +8,16 @@ import {
   StatusBar,
   SafeAreaView,
   Dimensions,
+  ActivityIndicator,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import {PROJECTS, Project} from '../config/projects';
+
+const PROJECTS_API_URL = 'https://sideprojects.thislou.com/projects';
+const CACHE_KEY = 'sides_projects_cache';
+
 
 const COLUMNS = 4;
 const GRID_PADDING = 16;
@@ -57,6 +63,42 @@ function ProjectTile({
 }
 
 export function HomeScreen({onProjectPress, onProfilePress}: Props) {
+  const [projects, setProjects] = useState<Project[]>(PROJECTS);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProjects() {
+      // Try cache first for instant render
+      try {
+        const cached = await AsyncStorage.getItem(CACHE_KEY);
+        if (cached && !cancelled) {
+          setProjects(JSON.parse(cached));
+        }
+      } catch {}
+
+      // Fetch fresh from API
+      try {
+        const res = await fetch(PROJECTS_API_URL);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.projects?.length > 0 && !cancelled) {
+            setProjects(data.projects);
+            await AsyncStorage.setItem(CACHE_KEY, JSON.stringify(data.projects));
+          }
+        }
+      } catch {}
+
+      if (!cancelled) {
+        setLoading(false);
+      }
+    }
+
+    loadProjects();
+    return () => { cancelled = true; };
+  }, []);
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8f8f8" />
@@ -66,19 +108,25 @@ export function HomeScreen({onProjectPress, onProfilePress}: Props) {
           <MaterialDesignIcons name="account-circle-outline" size={28} color="#4B4B4B" />
         </TouchableOpacity>
       </View>
-      <FlatList
-        data={PROJECTS}
-        keyExtractor={item => item.id}
-        numColumns={COLUMNS}
-        contentContainerStyle={styles.grid}
-        columnWrapperStyle={styles.row}
-        renderItem={({item}) => (
-          <ProjectTile
-            project={item}
-            onPress={p => onProjectPress?.(p)}
-          />
-        )}
-      />
+      {loading && projects.length === 0 ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#7A687F" />
+        </View>
+      ) : (
+        <FlatList
+          data={projects}
+          keyExtractor={item => item.id}
+          numColumns={COLUMNS}
+          contentContainerStyle={styles.grid}
+          columnWrapperStyle={styles.row}
+          renderItem={({item}) => (
+            <ProjectTile
+              project={item}
+              onPress={p => onProjectPress?.(p)}
+            />
+          )}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -87,6 +135,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8f8f8',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
