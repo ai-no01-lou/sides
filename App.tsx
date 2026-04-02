@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useCallback} from 'react';
+import React, {useEffect, useRef, useCallback, useState} from 'react';
 import {ActivityIndicator, Linking, View, StyleSheet} from 'react-native';
 import {
   NavigationContainer,
@@ -6,9 +6,9 @@ import {
 } from '@react-navigation/native';
 import {createStackNavigator} from '@react-navigation/stack';
 import {AuthProvider, useAuth} from './src/auth/AuthContext';
-import {LoginScreen} from './src/screens/LoginScreen';
 import {HomeScreen} from './src/screens/HomeScreen';
 import {WebViewScreen} from './src/screens/WebViewScreen';
+import {ProfileDrawer} from './src/components/ProfileDrawer';
 import {Project, PROJECTS} from './src/config/projects';
 
 export type RootStackParamList = {
@@ -49,6 +49,7 @@ function AppNavigator() {
   const {isLoading, isAuthenticated} = useAuth();
   const navRef = useRef<NavigationContainerRef<RootStackParamList>>(null);
   const pendingRef = useRef<Project | null>(null);
+  const [drawerVisible, setDrawerVisible] = useState(false);
 
   const navigateToProject = useCallback((project: Project) => {
     if (navRef.current?.isReady()) {
@@ -92,49 +93,51 @@ function AppNavigator() {
     );
   }
 
-  if (!isAuthenticated) {
-    return <LoginScreen />;
-  }
-
   return (
-    <NavigationContainer
-      ref={navRef}
-      onReady={() => {
-        // Process any deep link that arrived before the navigator was ready
-        if (pendingRef.current) {
-          navRef.current?.navigate('WebView', {
-            project: pendingRef.current,
-          });
-          pendingRef.current = null;
-        }
-      }}>
-      <Stack.Navigator
-        initialRouteName="Home"
-        screenOptions={{
-          headerStyle: {backgroundColor: '#f8f8f8'},
-          headerTintColor: '#4B4B4B',
-          headerTitleStyle: {fontWeight: '600'},
-          headerShadowVisible: false,
+    <View style={styles.root}>
+      <NavigationContainer
+        ref={navRef}
+        onReady={() => {
+          if (pendingRef.current) {
+            navRef.current?.navigate('WebView', {
+              project: pendingRef.current,
+            });
+            pendingRef.current = null;
+          }
         }}>
-        <Stack.Screen name="Home" options={{headerShown: false}}>
-          {props => (
-            <HomeScreen
-              {...props}
-              onProjectPress={project => {
-                props.navigation.navigate('WebView', {project});
-              }}
-            />
-          )}
-        </Stack.Screen>
-        <Stack.Screen
-          name="WebView"
-          options={({route}) => ({
-            title: route.params.project.name,
-          })}>
-          {props => <WebViewScreen project={props.route.params.project} />}
-        </Stack.Screen>
-      </Stack.Navigator>
-    </NavigationContainer>
+        <Stack.Navigator
+          initialRouteName="Home"
+          screenOptions={{
+            headerStyle: {backgroundColor: '#f8f8f8'},
+            headerTintColor: '#4B4B4B',
+            headerTitleStyle: {fontWeight: '600'},
+            headerShadowVisible: false,
+          }}>
+          <Stack.Screen name="Home" options={{headerShown: false}}>
+            {props => (
+              <HomeScreen
+                {...props}
+                onProjectPress={project => {
+                  props.navigation.navigate('WebView', {project});
+                }}
+                onProfilePress={() => setDrawerVisible(true)}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen
+            name="WebView"
+            options={({route}) => ({
+              title: route.params.project.name,
+            })}>
+            {props => <WebViewScreen project={props.route.params.project} />}
+          </Stack.Screen>
+        </Stack.Navigator>
+      </NavigationContainer>
+      <ProfileDrawer
+        visible={drawerVisible}
+        onClose={() => setDrawerVisible(false)}
+      />
+    </View>
   );
 }
 
@@ -147,6 +150,9 @@ function App(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   loading: {
     flex: 1,
     backgroundColor: '#f8f8f8',

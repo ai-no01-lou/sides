@@ -13,6 +13,8 @@ interface AuthState {
   isAuthenticated: boolean;
   accessToken: string | null;
   refreshToken: string | null;
+  userEmail: string | null;
+  userName: string | null;
 }
 
 interface AuthContextValue extends AuthState {
@@ -20,6 +22,8 @@ interface AuthContextValue extends AuthState {
   register: (email: string, password: string, name?: string) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<string | null>;
+  userEmail: string | null;
+  userName: string | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -30,6 +34,8 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
     isAuthenticated: false,
     accessToken: null,
     refreshToken: null,
+    userEmail: null,
+    userName: null,
   });
 
   // Boot: try loading tokens from keychain
@@ -41,12 +47,13 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
         try {
           const fresh = await AuthService.refreshTokens(tokens.refreshToken);
           await saveTokens(fresh);
-          setState({
+          setState(s => ({
+            ...s,
             isLoading: false,
             isAuthenticated: true,
             accessToken: fresh.accessToken,
             refreshToken: fresh.refreshToken,
-          });
+          }));
         } catch {
           // Refresh failed — tokens expired
           await clearTokens();
@@ -55,6 +62,8 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
             isAuthenticated: false,
             accessToken: null,
             refreshToken: null,
+            userEmail: null,
+            userName: null,
           });
         }
       } else {
@@ -74,6 +83,8 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       isAuthenticated: true,
       accessToken: res.accessToken,
       refreshToken: res.refreshToken,
+      userEmail: res.user.email,
+      userName: res.user.name || null,
     });
   }, []);
 
@@ -89,6 +100,8 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
         isAuthenticated: true,
         accessToken: res.accessToken,
         refreshToken: res.refreshToken,
+        userEmail: res.user.email,
+        userName: res.user.name || null,
       });
     },
     [],
@@ -101,6 +114,8 @@ export function AuthProvider({children}: {children: React.ReactNode}) {
       isAuthenticated: false,
       accessToken: null,
       refreshToken: null,
+      userEmail: null,
+      userName: null,
     });
   }, []);
 

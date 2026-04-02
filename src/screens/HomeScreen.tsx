@@ -12,7 +12,6 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import MaterialDesignIcons from '@react-native-vector-icons/material-design-icons';
 import {PROJECTS, Project} from '../config/projects';
-import {useAuth} from '../auth/AuthContext';
 
 const COLUMNS = 4;
 const GRID_PADDING = 16;
@@ -24,6 +23,7 @@ const ICON_SIZE = TILE_SIZE * 0.42;
 
 interface Props {
   onProjectPress?: (project: Project) => void;
+  onProfilePress?: () => void;
 }
 
 function ProjectTile({
@@ -56,16 +56,14 @@ function ProjectTile({
   );
 }
 
-export function HomeScreen({onProjectPress}: Props) {
-  const {logout} = useAuth();
-
+export function HomeScreen({onProjectPress, onProfilePress}: Props) {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8f8f8" />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Projects</Text>
-        <TouchableOpacity onPress={logout} activeOpacity={0.7}>
-          <Text style={styles.logoutText}>Sign Out</Text>
+        <TouchableOpacity onPress={onProfilePress} activeOpacity={0.7}>
+          <MaterialDesignIcons name="account-circle-outline" size={28} color="#4B4B4B" />
         </TouchableOpacity>
       </View>
       <FlatList
@@ -103,10 +101,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#4B4B4B',
     letterSpacing: -0.5,
-  },
-  logoutText: {
-    fontSize: 14,
-    color: '#7A687F',
   },
   grid: {
     paddingHorizontal: GRID_PADDING,
