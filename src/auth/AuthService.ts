@@ -1,4 +1,6 @@
-const AUTH_BASE_URL = 'http://api.localhost/auth';
+const AUTH_BASE_URL = __DEV__
+  ? 'http://api.localhost/auth'
+  : 'https://sideprojects.thislou.com/auth';
 
 interface AuthResponse {
   user: {id: string; email: string; name?: string};

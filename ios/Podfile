@@ -8,6 +8,11 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
+# Suppress all warnings from third-party pods (deprecation warnings in
+# react-native-keychain, react-native-webview, react-native-screens,
+# react-native-gesture-handler, and React-Fabric headers).
+inhibit_all_warnings!
+
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
@@ -55,8 +60,8 @@ target 'Sides' do
 
     # 2. Generate placeholder dSYMs for prebuilt frameworks (React, hermesvm,
     #    ReactNativeDependencies). These ship as prebuilt XCFrameworks with UUIDs
-    #    but no dSYMs. App Store Connect sees the UUIDs and warns about missing
-    #    dSYMs. We create empty dSYMs with matching UUIDs to satisfy the check.
+    #    but no dSYMs. App Store Connect validates the Mach-O file type, not
+    #    just UUIDs — use dsymutil to create proper dSYM companion files.
     prebuilt_fw_paths = {
       'hermesvm' => Dir.glob("#{installer.sandbox.root}/**/ios-arm64/hermesvm.framework/hermesvm").first,
       'React' => Dir.glob("#{installer.sandbox.root}/**/ios-arm64/React.framework/React").first,
@@ -67,33 +72,29 @@ target 'Sides' do
     prebuilt_fw_paths.each do |name, fw_path|
       next unless fw_path && File.exist?(fw_path)
       dsym_path = "#{dsym_output_dir}/#{name}.framework.dSYM"
-      uuid = `xcrun dwarfdump --uuid '#{fw_path}' 2>/dev/null`.match(/UUID: ([A-F0-9-]+)/)&.[](1)
-      next unless uuid
-      Pod::UI.puts "Creating placeholder dSYM for #{name}.framework (UUID: #{uuid})"
+      Pod::UI.puts "Generating dSYM for #{name}.framework"
       FileUtils.rm_rf(dsym_path)
-      FileUtils.mkdir_p("#{dsym_path}/Contents/Resources/DWARF")
-      File.write("#{dsym_path}/Contents/Info.plist", <<~PLIST)
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-          <key>CFBundleDevelopmentRegion</key>
-          <string>English</string>
-          <key>CFBundleIdentifier</key>
-          <string>com.apple.xcode.dsym.#{name}</string>
-          <key>CFBundleInfoDictionaryVersion</key>
-          <string>6.0</string>
-          <key>CFBundlePackageType</key>
-          <string>dSYM</string>
-          <key>CFBundleSignature</key>
-          <string>????</string>
-          <key>CFBundleVersion</key>
-          <string>1</string>
-        </dict>
-        </plist>
-      PLIST
-      # Copy the binary as placeholder DWARF — small but has matching UUID
-      FileUtils.cp(fw_path, "#{dsym_path}/Contents/Resources/DWARF/#{name}")
+      system("xcrun dsymutil '#{fw_path}' -o '#{dsym_path}' 2>/dev/null")
     end
+  end
+end
+
+# post_integrate runs AFTER CocoaPods writes the Pods project, so changes
+# are not overwritten. Needed because [CP-User] script phases are installed
+# after post_install, resetting always_out_of_date to nil.
+post_integrate do |installer|
+  # Mark all script phases as "run every build" so Xcode stops warning
+  # about missing outputs (affects both Pods and Sides projects).
+  pods_proj = begin; installer.pods_project; rescue; Xcodeproj::Project.open("#{installer.sandbox.root}/Pods.xcodeproj"); end
+  sides_proj = Xcodeproj::Project.open("#{installer.sandbox.root}/../Sides.xcodeproj")
+
+  [pods_proj, sides_proj].each do |project|
+    project.targets.each do |target|
+      target.build_phases.each do |phase|
+        next unless phase.respond_to?(:always_out_of_date)
+        phase.always_out_of_date = "1"
+      end
+    end
+    project.save
   end
 end
